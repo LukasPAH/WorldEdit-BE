@@ -3,6 +3,7 @@ import { Server } from "@notbeer-api";
 import { PlayerSession } from "server/sessions";
 import { Tool } from "./base_tool";
 import { Tools } from "./tool_manager";
+import { printerr } from "server/util";
 
 class CommandTool extends Tool {
     public command: string;
@@ -19,9 +20,11 @@ class CommandTool extends Tool {
             Server.command.callCommand(player, self.command.substring(0, firstSpace).trim(), self.command.substring(firstSpace).trim());
             session.usingItem = usingItem;
         } else {
-            if (player.isOp()) {
-                Server.queueCommand(self.command, player);
-            }
+            Server.queueCommand(self.command, player).then(({ error }) => {
+                if (error) {
+                    printerr("worldbuilder.oreville_wb:error.commandFail", player, true);
+                }
+            });
         }
     };
 

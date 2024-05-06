@@ -1,4 +1,4 @@
-import { Block, Vector3, Dimension, Entity, Player, BlockComponentTypeMap, RawMessage } from "@minecraft/server";
+import { Block, Vector3, Dimension, Entity, Player, BlockComponentTypes, RawMessage, system } from "@minecraft/server";
 import { Server, RawText, Vector } from "@notbeer-api";
 import config from "config.js";
 
@@ -62,16 +62,8 @@ export function canPlaceBlock(loc: Vector3, dim: Dimension) {
 }
 
 export function blockHasNBTData(block: Block) {
-    const components: (keyof BlockComponentTypeMap)[] = [
-        "minecraft:inventory",
-        "minecraft:sign",
-        "minecraft:piston",
-        "minecraft:recordPlayer",
-        "minecraft:waterContainer",
-        "minecraft:lavaContainer",
-        "minecraft:snowContainer",
-        "minecraft:potionContainer",
-    ];
+    const components = Object.keys(BlockComponentTypes);
+
     const nbt_blocks = [
         "minecraft:bee_nest",
         "minecraft:beehive",
@@ -89,6 +81,9 @@ export function blockHasNBTData(block: Block) {
         "minecraft:end_gateway", // TEST
         "minecraft:beacon",
         "minecraft:bed",
+        "minecraft:jukebox",
+        "minecraft:brewing_stand",
+        "minecraft:cauldron",
     ];
     return components.some((component) => !!block.getComponent(component)) || nbt_blocks.includes(block.typeId);
 }
@@ -144,5 +139,37 @@ export function arraysEqual<T>(a: T[], b: T[], compare: (a: T, b: T) => boolean)
         const valB = b[i];
         if (!!valA != !!valB) return true;
         return !compare(valA, valB);
+    });
+}
+
+export function isWaterlogged(block: Block): boolean {
+    const { x, y, z } = block.location;
+    const priorPerm = block.permutation;
+    block.dimension.runCommand(`setblock ${x} ${y} ${z} air`);
+    const isWater = block.dimension.getBlock(block.location).typeId === "minecraft:water";
+    block.setPermutation(priorPerm);
+    return isWater;
+}
+
+export function setWaterlogged(block: Block, waterlogState: boolean) {
+    const priorStates = block.permutation.getAllStates();
+    const { x, y, z } = block.location;
+    const { typeId } = block;
+
+    if (waterlogState) {
+        block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:water`);
+    } else {
+        block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:air`);
+    }
+
+    system.run(() => {
+        let statesToResetBySetblockCommand = "[";
+        for (const states of Object.entries(priorStates)) {
+            typeof states[1] === "string" ? (statesToResetBySetblockCommand += `"${states[0]}"="${states[1]}",`) : (statesToResetBySetblockCommand += `"${states[0]}"=${states[1]},`);
+        }
+        statesToResetBySetblockCommand += "]";
+        statesToResetBySetblockCommand = statesToResetBySetblockCommand.replace(",]", "]");
+
+        block.dimension.runCommand(`setblock ${x} ${y} ${z} ${typeId} ${statesToResetBySetblockCommand}`);
     });
 }

@@ -350,14 +350,17 @@ class BlockChangeImpl implements BlockChanges {
     }
 
     getBlock(loc: Vector3): BlockUnit {
-        const perm = this.getBlockPerm(loc);
+        const block = this.dimension.getBlock(loc);
+        const perm = block.permutation;
         return {
             typeId: perm.type.id,
             permutation: perm,
             location: loc,
             dimension: this.dimension,
             setPermutation: (perm: BlockPermutation) => this.setBlock(loc, perm),
-            hasTag: perm.hasTag,
+            hasTag(tag: string) {
+                return block.hasTag(tag);
+            },
             get isAir() {
                 return perm.type.id == "minecraft:air" ? true : false;
             },

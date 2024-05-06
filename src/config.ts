@@ -6,7 +6,7 @@ export default {
     /**
      * What character(s) to use to define the beginning of custom commands.
      */
-    commandPrefix: ";",
+    commandPrefix: "wedit:",
     /**
      * Whether the addon should use simpler methods to run operations faster.
      * This comes with the drawback of more limited capabilities.

@@ -4,6 +4,7 @@ import { BlockPermutation } from "@minecraft/server";
 import { registerCommand } from "../register_commands.js";
 import { floodFill } from "./floodfill_func.js";
 import { canPlaceBlock } from "server/util.js";
+import { isWaterlogged, setWaterlogged } from "server/util.js";
 
 const registerInformation = {
     name: "drain",
@@ -45,7 +46,7 @@ registerCommand(registerInformation, function* (session, builder, args) {
         const loc = playerBlock.offset(offset.x, offset.y, offset.z);
         if (!canPlaceBlock(loc, dimension)) continue;
         const block = dimension.getBlock(loc);
-        if (block.typeId.match(waterMatch) || (args.has("w") && block.isWaterlogged)) {
+        if (block.typeId.match(waterMatch) || (args.has("w") && isWaterlogged(block))) {
             fluidMatch = waterMatch;
         } else if (block.typeId.match(lavaMatch)) {
             fluidMatch = lavaMatch;
@@ -67,7 +68,7 @@ registerCommand(registerInformation, function* (session, builder, args) {
         // Stop fill at unloaded chunks
         const blocks = yield* floodFill(drainStart, args.get("radius"), (ctx, dir) => {
             const block = dimension.getBlock(ctx.worldPos.offset(dir.x, dir.y, dir.z));
-            if (!block?.typeId.match(fluidMatch)) return drainWaterLogged && block.isWaterlogged;
+            if (!block?.typeId.match(fluidMatch)) return drainWaterLogged && isWaterlogged(block);
             return true;
         });
 
@@ -83,7 +84,7 @@ registerCommand(registerInformation, function* (session, builder, args) {
                 let block = dimension.getBlock(loc);
                 while (!(block || (block = Jobs.loadBlock(loc)))) yield sleep(1);
                 if (drainWaterLogged && !block.typeId.match(fluidMatch)) {
-                    block.setWaterlogged(false);
+                    setWaterlogged(block, false);
                 } else {
                     block.setPermutation(air);
                 }

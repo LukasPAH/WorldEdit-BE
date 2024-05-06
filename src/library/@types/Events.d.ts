@@ -1,10 +1,7 @@
 import {
-    ChatSendBeforeEvent,
     ExplosionBeforeEvent,
-    BlockExplodeAfterEvent,
     ItemUseBeforeEvent,
     ItemUseOnBeforeEvent,
-    ChatSendAfterEvent,
     Player,
     Dimension,
     Entity,
@@ -16,14 +13,12 @@ import {
     WeatherChangeAfterEvent,
     PlayerLeaveAfterEvent,
     WorldInitializeAfterEvent,
+    ScriptEventCommandMessageAfterEvent,
 } from "@minecraft/server";
 import { registerInformation } from "./classes/CommandBuilder";
 
 export interface EventList {
-    beforeMessage: [ChatSendBeforeEvent];
     beforeExplosion: [ExplosionBeforeEvent];
-    blockExplode: [BlockExplodeAfterEvent];
-    messageCreate: [ChatSendAfterEvent];
     itemUseBefore: [ItemUseBeforeEvent];
     itemUseOnBefore: [ItemUseOnBeforeEvent];
     blockBreak: [PlayerBreakBlockBeforeEvent];
@@ -38,6 +33,7 @@ export interface EventList {
     playerLoaded: [PlayerLoadedEvent];
     playerLeave: [PlayerLeaveAfterEvent];
     ready: [ready];
+    scriptEvent: [ScriptEventCommandMessageAfterEvent];
     customCommand: [customCommand];
     playerChangeDimension: [playerChangeDimension];
     worldInitialize: [WorldInitializeAfterEvent];
@@ -69,7 +65,7 @@ export interface EntityCreateEvent {
 }
 interface customCommand {
     registration: registerInformation;
-    data: ChatSendBeforeEvent;
+    data: ScriptEventCommandMessageAfterEvent;
     readonly createdAt: Date;
     readonly createdTimestamp: number;
 }

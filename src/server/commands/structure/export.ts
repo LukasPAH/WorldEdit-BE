@@ -1,7 +1,7 @@
 import { assertCanBuildWithin, assertCuboidSelection } from "@modules/assert.js";
 import { PlayerUtil } from "@modules/player_util.js";
 import { RawText, regionCenter, regionIterateChunks, regionSize, Server, sleep, Vector } from "@notbeer-api";
-import { BlockPermutation, BlockVolume, Player, world } from "@minecraft/server";
+import { Player, world } from "@minecraft/server";
 import { registerCommand } from "../register_commands.js";
 import { Jobs } from "@modules/jobs.js";
 
@@ -73,11 +73,13 @@ registerCommand(registerInformation, function* (session, builder, args) {
                 yield Jobs.nextStep("Masking air...");
                 let count = 0;
                 const size = Vector.sub(range[1], range[0]).add(1);
-                const structVoid = BlockPermutation.resolve("minecraft:structure_void");
-                const air = BlockPermutation.resolve("minecraft:air");
+                const structVoid = "minecraft:structure_void";
+                const air = "minecraft:air";
                 for (const [subStart, subEnd] of regionIterateChunks(...range)) {
                     while (!Jobs.loadBlock(regionCenter(subStart, subEnd))) yield sleep(1);
-                    dimension.fillBlocks(new BlockVolume(subStart.floor(), subEnd.floor()), structVoid, { blockFilter: { includeTypes: ["air"] } });
+                    const subStartFloored = subStart.floor();
+                    const subEndFloored = subEnd.floor();
+                    dimension.runCommand(`fill ${subStartFloored.x} ${subStartFloored.y} ${subStartFloored.z} ${subEndFloored.x} ${subEndFloored.y} ${subEndFloored.z} ${structVoid} replace ${air}`);
                     const subSize = subEnd.sub(subStart).add(1);
                     count += subSize.x * subSize.y * subSize.z;
                     yield Jobs.setProgress(count / (size.x * size.y * size.z));

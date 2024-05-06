@@ -19,6 +19,7 @@ import { blockHasNBTData, getViewVector, locToString, stringToLoc } from "../uti
 import { EntityCreateEvent } from "library/@types/Events.js";
 import { Mask } from "./mask.js";
 import { JobFunction, Jobs } from "./jobs.js";
+import { isWaterlogged, setWaterlogged } from "server/util.js";
 
 export interface RegionLoadOptions {
     rotation?: Vector;
@@ -61,9 +62,9 @@ export class RegionBuffer {
                 if (blockHasNBTData(block)) {
                     const id = this.id + "_" + this.subId++;
                     this.saveBlockAsStruct(id, block, dim);
-                    this.blocks.set(locToString(relLoc), [block.permutation, block.isWaterlogged, id]);
+                    this.blocks.set(locToString(relLoc), [block.permutation, isWaterlogged(block), id]);
                 } else {
-                    this.blocks.set(locToString(relLoc), [block.permutation, block.isWaterlogged]);
+                    this.blocks.set(locToString(relLoc), [block.permutation, isWaterlogged(block)]);
                 }
             };
 
@@ -225,7 +226,7 @@ export class RegionBuffer {
 
                 if (block.length === 3) this.loadBlockFromStruct(block[2], blockLoc, dim);
                 oldBlock.setPermutation(transform(block[0]));
-                oldBlock.setWaterlogged(block[1]);
+                setWaterlogged(oldBlock, block[1]);
                 if (iterateChunk()) yield Jobs.setProgress(i / this.blocks.size);
                 i++;
             }
@@ -311,9 +312,9 @@ export class RegionBuffer {
                 if (block instanceof Block && blockHasNBTData(block)) {
                     const id = this.id + "_" + this.subId++;
                     this.saveBlockAsStruct(id, block.location, block.dimension);
-                    this.blocks.set(locToString(coord), [block.permutation, block.isWaterlogged, id]);
+                    this.blocks.set(locToString(coord), [block.permutation, isWaterlogged(block), id]);
                 } else {
-                    this.blocks.set(locToString(coord), block instanceof Block ? [block.permutation, block.isWaterlogged] : [block, false]);
+                    this.blocks.set(locToString(coord), block instanceof Block ? [block.permutation, isWaterlogged(block)] : [block, false]);
                 }
             }
             yield Jobs.setProgress(++i / volume);
@@ -358,7 +359,7 @@ export class RegionBuffer {
         } else {
             const id = this.id + "_" + this.subId++;
             error = Server.structure.save(id, block.location, block.location, block.dimension, options);
-            this.blocks.set(key, [block.permutation, block.isWaterlogged, id]);
+            this.blocks.set(key, [block.permutation, isWaterlogged(block), id]);
         }
         this.size = Vector.max(this.size, Vector.from(loc).add(1)).floor();
         this.blockCount = this.blocks.size;

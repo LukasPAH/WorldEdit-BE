@@ -13,7 +13,7 @@ export interface BlockUnit {
     readonly location: Vector3;
     readonly dimension: Dimension;
     setPermutation(perm: BlockPermutation): void;
-    hasTag(tag: string): boolean;
+    hasTag: (tag: string) => boolean;
     isAir: boolean;
 }
 

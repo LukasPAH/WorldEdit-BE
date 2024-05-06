@@ -1,4 +1,4 @@
-import { Player, ItemStack, ItemUseBeforeEvent, world, PlayerBreakBlockBeforeEvent, EntityHitBlockAfterEvent, system } from "@minecraft/server";
+import { Player, ItemStack, ItemUseBeforeEvent, world, PlayerBreakBlockBeforeEvent, EntityHitBlockAfterEvent, system, EntityItemComponent } from "@minecraft/server";
 import { contentLog, Server, sleep, Thread, Vector, Database } from "@notbeer-api";
 import { Tool, ToolAction } from "./base_tool.js";
 import { PlayerSession, getSession, hasSession } from "../sessions.js";
@@ -32,7 +32,7 @@ class ToolBuilder {
             if (!entity.hasComponent("minecraft:item")) return;
 
             const player = entity.dimension.getPlayers({ closest: 1, location: entity.location, maxDistance: 2 })[0];
-            if (player) this.onItemDrop(entity.getComponent("item").itemStack, player);
+            if (player) this.onItemDrop((entity.getComponent("minecraft:item") as EntityItemComponent).itemStack, player);
         });
 
         Server.on("blockBreak", (ev) => {

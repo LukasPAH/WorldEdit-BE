@@ -172,7 +172,8 @@ export class Selection {
             try {
                 for (const [id, loc] of this.drawParticles) {
                     try {
-                        this.player.spawnParticle(id, loc);
+                        const { x, y, z } = loc;
+                        this.player.runCommand(`particle ${id} ${x} ${y} ${z}`);
                     } catch {
                         /* pass */
                     }

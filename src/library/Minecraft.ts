@@ -1,33 +1,8 @@
-import { world, system, PlayerSpawnAfterEvent, WatchdogTerminateReason } from "@minecraft/server";
-import { shutdownTimers } from "./utils/scheduling.js";
-import { shutdownThreads } from "./utils/multithreading.js";
-import { contentLog, RawText } from "./utils/index.js";
+import { world, system, Player } from "@minecraft/server";
+import { contentLog } from "./utils/index.js";
 
 // eslint-disable-next-line prefer-const
 let _server: ServerBuild;
-
-system.beforeEvents.watchdogTerminate.subscribe((ev) => {
-    if (ev.terminateReason == WatchdogTerminateReason.Hang) {
-        ev.cancel = true;
-        shutdownTimers();
-        shutdownThreads();
-        if (_server) _server.shutdown();
-
-        const players = Array.from(world.getPlayers());
-        if (players.length == 0) {
-            const event = (ev: PlayerSpawnAfterEvent) => {
-                if (!ev.initialSpawn) return;
-                world.afterEvents.playerSpawn.unsubscribe(event);
-                RawText.translate("script.watchdog.error.hang").print(ev.player);
-            };
-            system.run(() => world.afterEvents.playerSpawn.subscribe(event));
-        } else {
-            for (const player of players) {
-                RawText.translate("script.watchdog.error.hang").print(player);
-            }
-        }
-    }
-});
 
 export * from "./utils/index.js";
 
@@ -61,29 +36,32 @@ class ServerBuild extends ServerBuilder {
     private _buildEvent() {
         const beforeEvents = world.beforeEvents;
         const afterEvents = world.afterEvents;
+        const systemAfterEvents = system.afterEvents;
 
-        beforeEvents.chatSend.subscribe((data) => {
+        systemAfterEvents.scriptEventReceive.subscribe((data) => {
+            // Ensure this is run from a player.
+            if (!data.sourceEntity) return;
+            if (!(data.sourceEntity instanceof Player)) return;
+
             /**
-             * Emit to 'beforeMessage' event listener
+             * Emit to 'scriptEvent' event listener
              */
-            this.emit("beforeMessage", data);
+            this.emit("scriptEvent", data);
             /**
-             * This is for the command builder and a emitter
+             * This is for the command builder and an emitter.
              */
-            const msg = data.message;
+            const msg = data.id;
             if (!msg.startsWith(this.command.prefix)) return;
-            data.cancel = true;
-            const command = msg.split(/\s+/)[0].slice(this.command.prefix.length);
-            this.command.callCommand(data.sender, command, msg.substring(msg.indexOf(command) + command.length).trim());
+
+            const command = msg.slice(this.command.prefix.length);
+
+            this.command.callCommand(data.sourceEntity, command, data.message.trim());
         });
+
         /**
          * Emit to 'beforeExplosion' event listener
          */
         beforeEvents.explosion.subscribe((data) => this.emit("beforeExplosion", data));
-        /**
-         * Emit to 'blockExplode' event listener
-         */
-        afterEvents.blockExplode.subscribe((data) => this.emit("blockExplode", data));
         /**
          * Emit to 'beforeExplosion' event listener
          */
@@ -101,11 +79,6 @@ class ServerBuild extends ServerBuilder {
          * Emit to 'itemUseBeforeOm' event listener
          */
         beforeEvents.itemUseOn.subscribe((data) => this.emit("itemUseOnBefore", data));
-
-        /**
-         * Emit to 'messageCreate' event listener
-         */
-        afterEvents.chatSend.subscribe((data) => this.emit("messageCreate", data));
         /**
          * Emit to 'entityEffected' event listener
          */

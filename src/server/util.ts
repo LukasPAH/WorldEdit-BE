@@ -62,7 +62,7 @@ export function canPlaceBlock(loc: Vector3, dim: Dimension) {
 }
 
 export function blockHasNBTData(block: Block) {
-    const components = Object.keys(BlockComponentTypes);
+    const components = Object.values(BlockComponentTypes);
 
     const nbt_blocks = [
         "minecraft:bee_nest",
@@ -143,33 +143,35 @@ export function arraysEqual<T>(a: T[], b: T[], compare: (a: T, b: T) => boolean)
 }
 
 export function isWaterlogged(block: Block): boolean {
-    const { x, y, z } = block.location;
-    const priorPerm = block.permutation;
-    block.dimension.runCommand(`setblock ${x} ${y} ${z} air`);
-    const isWater = block.dimension.getBlock(block.location).typeId === "minecraft:water";
-    block.setPermutation(priorPerm);
-    return isWater;
+    return false;
+    // const { x, y, z } = block.location;
+    // const id = Math.floor(Math.random() * 10000000);
+    // block.dimension.runCommand(`structure save "wedit:${id}" ${x} ${y} ${z} ${x} ${y} ${z} false memory true`);
+    // block.dimension.runCommand(`setblock ${x} ${y} ${z} air`);
+    // const isWater = block.dimension.getBlock(block.location).typeId === "minecraft:water";
+    // block.dimension.runCommand(`structure load "wedit:${id}" ${x} ${y} ${z}`);
+    // block.dimension.runCommand(`structure delete "wedit:${id}"`);
+    // return isWater;
 }
 
 export function setWaterlogged(block: Block, waterlogState: boolean) {
-    const priorStates = block.permutation.getAllStates();
-    const { x, y, z } = block.location;
-    const { typeId } = block;
-
-    if (waterlogState) {
-        block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:water`);
-    } else {
-        block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:air`);
-    }
-
-    system.run(() => {
-        let statesToResetBySetblockCommand = "[";
-        for (const states of Object.entries(priorStates)) {
-            typeof states[1] === "string" ? (statesToResetBySetblockCommand += `"${states[0]}"="${states[1]}",`) : (statesToResetBySetblockCommand += `"${states[0]}"=${states[1]},`);
-        }
-        statesToResetBySetblockCommand += "]";
-        statesToResetBySetblockCommand = statesToResetBySetblockCommand.replace(",]", "]");
-
-        block.dimension.runCommand(`setblock ${x} ${y} ${z} ${typeId} ${statesToResetBySetblockCommand}`);
-    });
+    // const priorPerm = block.permutation;
+    // const priorStates = block.permutation.getAllStates();
+    // const { x, y, z } = block.location;
+    // const { typeId } = block;
+    // if (waterlogState) {
+    //     block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:water`);
+    // } else {
+    //     block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:air`);
+    // }
+    // system.run(() => {
+    //     let statesToResetBySetblockCommand = "[";
+    //     for (const states of Object.entries(priorStates)) {
+    //         typeof states[1] === "string" ? (statesToResetBySetblockCommand += `"${states[0]}"="${states[1]}",`) : (statesToResetBySetblockCommand += `"${states[0]}"=${states[1]},`);
+    //     }
+    //     statesToResetBySetblockCommand += "]";
+    //     statesToResetBySetblockCommand = statesToResetBySetblockCommand.replace(",]", "]");
+    //     block.dimension.runCommand(`setblock ${x} ${y} ${z} ${typeId} ${statesToResetBySetblockCommand}`);
+    //     block.setPermutation(priorPerm);
+    // });
 }

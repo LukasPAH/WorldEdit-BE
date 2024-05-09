@@ -22,7 +22,7 @@ class CommandTool extends Tool {
         } else {
             Server.queueCommand(self.command, player).then(({ error }) => {
                 if (error) {
-                    printerr("worldbuilder.oreville_wb:error.commandFail", player, true);
+                    printerr("worldedit.tool.noPerm", player, true);
                 }
             });
         }

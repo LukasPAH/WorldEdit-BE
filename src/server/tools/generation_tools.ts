@@ -14,7 +14,7 @@ import { PyramidShape } from "server/shapes/pyramid";
 function trySpawnParticle(player: Player, type: string, location: Vector3) {
     try {
         const { x, y, z } = location;
-        player.runCommand(`particle ${type} ${x} ${y} ${z}`);
+        player.runCommand(`particle ${type} ${(x - 0.001).toFixed(3)} ${y} ${(z - 0.001).toFixed(3)}`);
     } catch {
         /* pass */
     }

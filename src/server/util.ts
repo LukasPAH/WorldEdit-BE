@@ -1,5 +1,5 @@
-import { Block, Vector3, Dimension, Entity, Player, BlockComponentTypes, RawMessage, world, StructureSaveMode, BlockPermutation } from "@minecraft/server";
-import { Server, RawText, Vector } from "@notbeer-api";
+import { Block, Vector3, Dimension, Entity, Player, BlockComponentTypes, RawMessage, world, StructureSaveMode } from "@minecraft/server";
+import { Server, RawText, Vector, generateId } from "@notbeer-api";
 import config from "config.js";
 
 /**
@@ -144,22 +144,28 @@ export function arraysEqual<T>(a: T[], b: T[], compare: (a: T, b: T) => boolean)
     });
 }
 
-let i = 0;
-
+/**
+ * Tests if the given block in the world is waterlogged. Similar to beta API block.isWaterlogged.
+ * @param block The block in the world.
+ * @returns Whether the block is waterlogged.
+ */
 export function isWaterlogged(block: Block): boolean {
-    const id = `wedit:waterlog_getter_${i}`;
-    i++;
+    const id = `wedit:waterlog_getter_${generateId()}`;
     const structure = world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false, saveMode: StructureSaveMode.Memory });
     const returnValue = structure.getIsWaterlogged({ x: 0, y: 0, z: 0 });
     world.structureManager.delete(structure);
     return returnValue;
 }
 
+/**
+ * Sets the given block to the given waterlog boolean state. Similar to the beta API block.setWaterlogged().
+ * @param block The block in the world.
+ * @param waterlogState Whether the block should be waterlogged or not.
+ */
 export function setWaterlogged(block: Block, waterlogState: boolean) {
     if (waterlogState === false) return;
 
-    const id = `wedit:waterlog_setter_${i}`;
-    i++;
+    const id = `wedit:waterlog_setter_${generateId()}`;
 
     world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false });
 

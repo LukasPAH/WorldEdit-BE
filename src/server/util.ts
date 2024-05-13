@@ -1,4 +1,4 @@
-import { Block, Vector3, Dimension, Entity, Player, BlockComponentTypes, RawMessage, system } from "@minecraft/server";
+import { Block, Vector3, Dimension, Entity, Player, BlockComponentTypes, RawMessage, world, StructureSaveMode, BlockPermutation } from "@minecraft/server";
 import { Server, RawText, Vector } from "@notbeer-api";
 import config from "config.js";
 
@@ -84,6 +84,8 @@ export function blockHasNBTData(block: Block) {
         "minecraft:jukebox",
         "minecraft:brewing_stand",
         "minecraft:cauldron",
+        "minecraft:item_frame",
+        "minecraft:glow_frame",
     ];
     return components.some((component) => !!block.getComponent(component)) || nbt_blocks.includes(block.typeId);
 }
@@ -142,36 +144,28 @@ export function arraysEqual<T>(a: T[], b: T[], compare: (a: T, b: T) => boolean)
     });
 }
 
+let i = 0;
+
 export function isWaterlogged(block: Block): boolean {
-    return false;
-    // const { x, y, z } = block.location;
-    // const id = Math.floor(Math.random() * 10000000);
-    // block.dimension.runCommand(`structure save "wedit:${id}" ${x} ${y} ${z} ${x} ${y} ${z} false memory true`);
-    // block.dimension.runCommand(`setblock ${x} ${y} ${z} air`);
-    // const isWater = block.dimension.getBlock(block.location).typeId === "minecraft:water";
-    // block.dimension.runCommand(`structure load "wedit:${id}" ${x} ${y} ${z}`);
-    // block.dimension.runCommand(`structure delete "wedit:${id}"`);
-    // return isWater;
+    const id = `wedit:waterlog_getter_${i}`;
+    i++;
+    const structure = world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false, saveMode: StructureSaveMode.Memory });
+    const returnValue = structure.getIsWaterlogged({ x: 0, y: 0, z: 0 });
+    world.structureManager.delete(structure);
+    return returnValue;
 }
 
 export function setWaterlogged(block: Block, waterlogState: boolean) {
-    // const priorPerm = block.permutation;
-    // const priorStates = block.permutation.getAllStates();
-    // const { x, y, z } = block.location;
-    // const { typeId } = block;
-    // if (waterlogState) {
-    //     block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:water`);
-    // } else {
-    //     block.dimension.runCommand(`setblock ${x} ${y} ${z} minecraft:air`);
-    // }
-    // system.run(() => {
-    //     let statesToResetBySetblockCommand = "[";
-    //     for (const states of Object.entries(priorStates)) {
-    //         typeof states[1] === "string" ? (statesToResetBySetblockCommand += `"${states[0]}"="${states[1]}",`) : (statesToResetBySetblockCommand += `"${states[0]}"=${states[1]},`);
-    //     }
-    //     statesToResetBySetblockCommand += "]";
-    //     statesToResetBySetblockCommand = statesToResetBySetblockCommand.replace(",]", "]");
-    //     block.dimension.runCommand(`setblock ${x} ${y} ${z} ${typeId} ${statesToResetBySetblockCommand}`);
-    //     block.setPermutation(priorPerm);
-    // });
+    if (waterlogState === false) return;
+
+    const id = `wedit:waterlog_setter_${i}`;
+    i++;
+
+    world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false });
+
+    // Specifically setblock rather than using APIs otherwise the contents of any inventories will drop.
+    block.dimension.runCommand(`setblock ${block.x} ${block.y} ${block.z} water`);
+
+    world.structureManager.place(id, block.dimension, block.location, { waterlogged: waterlogState });
+    world.structureManager.delete(id);
 }

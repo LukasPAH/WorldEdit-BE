@@ -173,7 +173,7 @@ export class Selection {
                 for (const [id, loc] of this.drawParticles) {
                     try {
                         const { x, y, z } = loc;
-                        this.player.runCommand(`particle ${id} ${(x - 0.001).toFixed(3)} ${y} ${(z - 0.001).toFixed(3)}`);
+                        this.player.runCommand(`particle ${id} ${x.toFixed(1)} ${y} ${z.toFixed(1)}`);
                     } catch {
                         /* pass */
                     }

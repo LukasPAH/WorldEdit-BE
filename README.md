@@ -13,9 +13,9 @@ __Please note that this addon requires experimental features. To be on the safe 
 
 ## Installation
 ### Locally
-First you must download the mcaddon file. You can find one in the [release section](https://github.com/SIsilicon/WorldEdit-BE/releases). After which, you open it with Minecraft and it will be imported into your game. Once there, choose a world you want to apply this addon to, and add the behaviour pack (the resource pack should apply automatically). The "Beta APIs" experimental feature must also be enabled.
-![Beta APIs](docs/Experimental_Features.jpg)
-And that's it! Your world is ready for WorldEdit.
+First you must download the mcaddon file. You can find one in the [release section](https://github.com/SIsilicon/WorldEdit-BE/releases). After which, you open it with Minecraft and it will be imported into your game. Once there, choose a world you want to apply this addon to, and add the behaviour pack (the resource pack should apply automatically).
+
+That's it! Your world is ready for WorldEdit.
 
 ### Aternos server
 To properly add this addon to the server, you first need to upload an already existing world with the required experimental features enabled (Do NOT add the addon to the world directly). You must then install the addon separately in the server's `packs` folder. Read more about how aternos handles addons and experimental features [here](https://support.aternos.org/hc/en-us/articles/360042095232-Installing-Addons-Minecraft-Bedrock-Edition-) and [here](https://support.aternos.org/hc/en-us/articles/4407553257873-Enabling-experimental-gameplay-Minecraft-Bedrock-Edition-).

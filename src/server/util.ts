@@ -167,7 +167,7 @@ export function setWaterlogged(block: Block, waterlogState: boolean) {
 
     const id = `wedit:waterlog_setter_${generateId()}`;
 
-    world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false });
+    world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false, saveMode: StructureSaveMode.Memory });
 
     // Specifically setblock rather than using APIs otherwise the contents of any inventories will drop.
     block.dimension.runCommand(`setblock ${block.x} ${block.y} ${block.z} water`);

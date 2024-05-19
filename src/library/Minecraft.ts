@@ -1,8 +1,9 @@
 import { world, system, Player } from "@minecraft/server";
 import { contentLog } from "./utils/index.js";
 
-/* eslint-disable-next-line prefer-const */
+/* eslint-disable prefer-const */
 let _server: ServerBuild;
+/* eslint-enable prefer-const */
 
 export * from "./utils/index.js";
 

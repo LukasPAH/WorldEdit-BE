@@ -4,7 +4,6 @@ import { BlockPermutation } from "@minecraft/server";
 import { registerCommand } from "../register_commands.js";
 import { floodFill } from "./floodfill_func.js";
 import { canPlaceBlock } from "server/util.js";
-import { isWaterlogged, setWaterlogged } from "server/util.js";
 
 const registerInformation = {
     name: "drain",
@@ -46,7 +45,7 @@ registerCommand(registerInformation, function* (session, builder, args) {
         const loc = playerBlock.offset(offset.x, offset.y, offset.z);
         if (!canPlaceBlock(loc, dimension)) continue;
         const block = dimension.getBlock(loc);
-        if (block.typeId.match(waterMatch) || (args.has("w") && isWaterlogged(block))) {
+        if (block.typeId.match(waterMatch) || (args.has("w") && block.isWaterlogged)) {
             fluidMatch = waterMatch;
         } else if (block.typeId.match(lavaMatch)) {
             fluidMatch = lavaMatch;

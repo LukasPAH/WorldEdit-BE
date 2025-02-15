@@ -86,6 +86,7 @@ export function blockHasNBTData(block: Block) {
         "minecraft:cauldron",
         "minecraft:item_frame",
         "minecraft:glow_frame",
+        "minecraft:decorated_pot",
     ];
     return components.some((component) => !!block.getComponent(component)) || nbt_blocks.includes(block.typeId);
 }
@@ -163,36 +164,4 @@ export function arraysEqual<T>(a: T[], b: T[], compare: (a: T, b: T) => boolean)
         if (!!valA != !!valB) return true;
         return !compare(valA, valB);
     });
-}
-
-/**
- * Tests if the given block in the world is waterlogged. Similar to beta API block.isWaterlogged.
- * @param block The block in the world.
- * @returns Whether the block is waterlogged.
- */
-export function isWaterlogged(block: Block): boolean {
-    const id = `wedit:waterlog_getter_${generateId()}`;
-    const structure = world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false, saveMode: StructureSaveMode.Memory });
-    const returnValue = structure.getIsWaterlogged({ x: 0, y: 0, z: 0 });
-    world.structureManager.delete(structure);
-    return returnValue;
-}
-
-/**
- * Sets the given block to the given waterlog boolean state. Similar to the beta API block.setWaterlogged().
- * @param block The block in the world.
- * @param waterlogState Whether the block should be waterlogged or not.
- */
-export function setWaterlogged(block: Block, waterlogState: boolean) {
-    if (waterlogState === false) return;
-
-    const id = `wedit:waterlog_setter_${generateId()}`;
-
-    world.structureManager.createFromWorld(id, block.dimension, block.location, block.location, { includeEntities: false, saveMode: StructureSaveMode.Memory });
-
-    // Specifically setblock rather than using APIs otherwise the contents of any inventories will drop.
-    block.dimension.runCommand(`setblock ${block.x} ${block.y} ${block.z} water`);
-
-    world.structureManager.place(id, block.dimension, block.location, { waterlogged: waterlogState });
-    world.structureManager.delete(id);
 }

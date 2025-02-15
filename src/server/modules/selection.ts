@@ -16,8 +16,7 @@ const drawFrequency = 8; // in ticks
 export class Selection {
     private _mode: selectMode = "cuboid";
     private _points: Vector[] = [];
-    private _visible: boolean = config.drawOutlines;
-
+    private _visible: boolean | "local" = config.drawOutlines;
     private modeLastDraw: selectMode = this._mode;
     private pointsLastDraw: Vector[] = [];
 
@@ -208,11 +207,11 @@ export class Selection {
         return this._points.map((v) => v.clone());
     }
 
-    public get visible(): boolean {
+    public get visible(): boolean | "local" {
         return this._visible;
     }
 
-    public set visible(value: boolean) {
+    public set visible(value: boolean | "local") {
         this._visible = value;
     }
 }

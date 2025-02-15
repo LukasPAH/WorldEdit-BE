@@ -1,5 +1,5 @@
 import { Dimension, Vector3, world, Entity } from "@minecraft/server";
-import { commandSyntaxError, contentLog, CustomArgType, Database, Vector } from "@notbeer-api";
+import { commandSyntaxError, contentLog, CustomArgType, Databases, Vector } from "@notbeer-api";
 import { EventEmitter } from "library/classes/eventEmitter.js";
 import { locToString, wrap } from "../util.js";
 import { errorEventSym, PooledResource, readyEventSym, ResourcePool } from "./extern/resource_pools.js";
@@ -23,6 +23,17 @@ class Biome implements CustomArgType {
 
     getName() {
         return this.name;
+    }
+
+    clone() {
+        const clone = new Biome();
+        clone.id = this.id;
+        clone.name = this.name;
+        return clone;
+    }
+
+    toString() {
+        return `[biome: ${this.name}/${this.id}]`;
     }
 
     static parseArgs(args: string[], index = 0) {
@@ -49,17 +60,6 @@ class Biome implements CustomArgType {
         }
         return { result, argIndex: index + 1 };
     }
-
-    static clone(original: Biome) {
-        const clone = new Biome();
-        clone.id = original.id;
-        clone.name = original.name;
-        return clone;
-    }
-
-    toString() {
-        return `[biome: ${this.name}/${this.id}]`;
-    }
 }
 
 class BiomeChanges {
@@ -75,7 +75,7 @@ class BiomeChanges {
             this.changes.set(subChunkCoord, new Map());
         }
         const subChunk = this.changes.get(subChunkCoord);
-        subChunk.set(this.locToId(new Vector(wrap(16, loc.x), wrap(16, loc.y), wrap(16, loc.z))), biome);
+        subChunk.set(this.locToId(new Vector(wrap(loc.x, 16), wrap(loc.y, 16), wrap(loc.z, 16))), biome);
 
         if (subChunk.size == 4096) {
             this.flush();
@@ -85,15 +85,15 @@ class BiomeChanges {
     flush() {
         for (const [chunk, data] of this.changes) {
             const tableName = `biome,${this.dimension.id},${chunk}`;
-            const database = new Database(tableName);
+            const database = Databases.load(tableName, world, true);
 
             let biomes: number[] = [];
-            if (!database.has("biomes")) {
+            if (!("biomes" in database)) {
                 biomes.length = 4096;
                 biomes = biomes.fill(-1);
             } else {
-                const palette: number[] = database.get("palette");
-                biomes = (database.get("biomes") as number[]).map((idx) => (idx ? palette[idx - 1] : -1));
+                const palette: number[] = database.data.palette;
+                biomes = (database.data.biomes as number[]).map((idx) => (idx ? palette[idx - 1] : -1));
             }
 
             for (const [loc, biome] of data.entries()) {
@@ -111,12 +111,8 @@ class BiomeChanges {
             newPalette.forEach((val, idx) => paletteMap.set(val, idx + 1));
             paletteMap.set(-1, 0);
 
-            database.set(
-                "biomes",
-                biomes.map((biome) => paletteMap.get(biome))
-            );
-            database.set("palette", newPalette);
-
+            database.data.biomes = biomes.map((biome) => paletteMap.get(biome));
+            database.data.palette = newPalette;
             database.save();
         }
         this.changes.clear();

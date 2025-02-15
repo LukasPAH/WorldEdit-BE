@@ -1,7 +1,7 @@
 import { PlayerUtil } from "@modules/player_util.js";
 import { RegionBuffer } from "@modules/region_buffer.js";
-import { RawText, Server, Vector } from "@notbeer-api";
-import { Player } from "@minecraft/server";
+import { RawText, Vector } from "@notbeer-api";
+import { Player, world } from "@minecraft/server";
 import { registerCommand } from "../register_commands.js";
 
 const registerInformation = {
@@ -17,9 +17,7 @@ const registerInformation = {
 };
 
 function readMetaData(name: string, player: Player) {
-    if (!name.includes(":")) {
-        name = "mystructure:" + name;
-    }
+    if (!name.includes(":")) name = "mystructure:" + name;
 
     const dimension = player.dimension;
     let blockLoc = PlayerUtil.getBlockLocation(player);
@@ -27,25 +25,23 @@ function readMetaData(name: string, player: Player) {
         blockLoc = blockLoc.offset(1, 0, 0);
     }
     const entity = dimension.spawnEntity("wedit:struct_meta", blockLoc);
-    entity.nameTag = "__wedit__placeholder__";
+    entity.nameTag = "__placeholder__";
 
-    Server.structure.load(name, blockLoc, player.dimension);
+    world.structureManager.place(name, player.dimension, blockLoc);
     let data: string;
-    const imported = dimension.getEntitiesAtBlockLocation(blockLoc).find((entity) => entity.typeId == "wedit:struct_meta" && entity.nameTag != "__wedit__placeholder__");
+    const imported = dimension.getEntitiesAtBlockLocation(blockLoc).find((entity) => entity.typeId == "wedit:struct_meta" && entity.nameTag != "__placeholder__");
     if (imported) {
         data = imported.nameTag;
-        imported.triggerEvent("wedit:despawn");
+        imported.remove();
     }
-    entity.triggerEvent("wedit:despawn");
+    entity.remove();
     return data;
 }
 
 export function importStructure(name: string, player: Player) {
     if (!name.includes(":")) {
         const ref = readMetaData("weditstructref_" + name, player);
-        if (ref) {
-            name = ref;
-        }
+        if (ref) name = ref;
     }
 
     const [namespace, struct] = name.split(":") as [string, string];
@@ -56,8 +52,7 @@ export function importStructure(name: string, player: Player) {
         throw "commands.generic.wedit:commandFail";
     }
 
-    const buffer = new RegionBuffer(false);
-    buffer.import(namespace + ":weditstructexport_" + struct, Vector.from(metadata.size).floor());
+    const buffer = RegionBuffer.get(namespace + ":weditstructexport_" + struct);
     return { buffer, metadata };
 }
 
@@ -68,9 +63,9 @@ registerCommand(registerInformation, function (session, builder, args) {
     if (session.clipboard) session.deleteRegion(session.clipboard);
     session.clipboard = buffer;
     session.clipboardTransform = {
-        relative: Vector.from(metadata.relative),
+        offset: Vector.from(metadata.relative),
         rotation: Vector.ZERO,
-        flip: Vector.ONE,
+        scale: Vector.ONE,
     };
 
     return RawText.translate("commands.wedit:import.explain").with(args.get("name"));

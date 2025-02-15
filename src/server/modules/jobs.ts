@@ -1,5 +1,5 @@
-import { Server, RawText, removeTickingArea, setTickingAreaCircle, Thread, getCurrentThread } from "@notbeer-api";
-import { Player, Dimension, Vector3, Block } from "@minecraft/server";
+import { Server, RawText, removeTickingArea, setTickingAreaCircle, Thread, getCurrentThread, regionCenter, sleep } from "@notbeer-api";
+import { Player, Dimension, Vector3, Block, system } from "@minecraft/server";
 import { PlayerSession, getSession } from "server/sessions";
 import { UnloadedChunksError } from "./assert";
 
@@ -62,7 +62,7 @@ class JobHandler {
 
                 const value = val.value;
                 if ((<JobFunction>value)?.jobFunc === "setProgress") {
-                    job.percent = Math.max(Math.min((<JobFunction>value).data, 1), 0);
+                    job.percent = Math.min((<JobFunction>value).data, 1);
                 } else if ((<JobFunction>value)?.jobFunc === "nextStep") {
                     job.message = (<JobFunction>value).data;
                     job.percent = 0;
@@ -88,20 +88,26 @@ class JobHandler {
         if (this.current) return { jobFunc: "setProgress", data: percent };
     }
 
-    public loadBlock(loc: Vector3, ctx?: JobContext): Block | undefined {
-        const job = this.jobs.get(ctx ?? this.current);
-        const block = job?.dimension.getBlock(loc);
-        if ((ctx || !block) && job) {
+    public *loadBlock(loc: Vector3, ctx: JobContext = this.current): Generator<Promise<void>, Block | undefined> {
+        const job = this.jobs.get(ctx);
+        while (true) {
+            if (!Jobs.isContextValid(ctx)) return undefined;
+            const block = job.dimension.getBlock(loc);
+            if (block) return block;
+
             if (job.tickingAreaSlot === undefined) {
                 if (!job.tickingAreaRequestTime) job.tickingAreaRequestTime = Date.now();
-                return;
+                yield sleep(1);
+                continue;
             }
 
-            if (!setTickingAreaCircle(loc, 4, job.dimension, "wedit:ticking_area_" + job.tickingAreaSlot)) {
-                throw new UnloadedChunksError("worldedit.error.tickArea");
-            }
+            if (setTickingAreaCircle(loc, 4, job.dimension, "wedit:ticking_area_" + job.tickingAreaSlot)) yield sleep(1);
+            else throw new UnloadedChunksError("worldedit.error.tickArea");
         }
-        return block;
+    }
+
+    public *loadArea(start: Vector3, end: Vector3, ctx?: JobContext) {
+        return !!(yield* this.loadBlock(regionCenter(start, end), ctx));
     }
 
     public inContext(): boolean {
@@ -114,6 +120,10 @@ class JobHandler {
 
     public isContextValid(ctx: JobContext) {
         return this.jobs.has(ctx);
+    }
+
+    public getRunner(ctx?: JobContext) {
+        return this.jobs.get(ctx ?? this.getContext()).player;
     }
 
     public getJobsForSession(session: PlayerSession) {
@@ -155,7 +165,7 @@ class JobHandler {
             if (job.message?.length) {
                 if (!progresses.has(job.player)) progresses.set(job.player, []);
                 const percent = (job.percent + job.step) / job.stepCount;
-                progresses.get(job.player).push([job.tickingAreaRequestTime ? "Loading Chunks..." : job.message, Math.max(percent, 0)]);
+                progresses.get(job.player).push([job.tickingAreaRequestTime ? "Loading Chunks..." : job.message, percent]);
             }
         }
 
@@ -165,11 +175,12 @@ class JobHandler {
             for (const [message, percent] of progress) {
                 if (text) text.append("text", "\n");
                 let bar = "";
-                for (let i = 0; i < 20; i++) bar += i / 20 <= percent ? "█" : "▒";
+                if (percent >= 0) for (let i = 0; i < 20; i++) bar += i / 20 <= percent ? "█" : "▒";
+                else for (let i = 0; i < 20; i++) bar += (i - 2 * system.currentTick) % 20 > -5 ? "█" : "▒";
 
                 if (!text) text = new RawText();
                 if (progress.length > 1) text.append("text", `Job ${++i}: `);
-                text.append("translate", message).append("text", `\n${bar} ${(percent * 100).toFixed(2)}%`);
+                text.append("translate", message).append("text", `\n${bar} ${percent >= 0 ? (percent * 100).toFixed(2) : ". . . ."}%`);
             }
             Server.queueCommand(`titleraw @s actionbar ${text.toString()}`, player);
         }

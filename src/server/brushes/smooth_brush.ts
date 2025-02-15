@@ -3,7 +3,7 @@ import { PlayerSession } from "../sessions.js";
 import { brushTypes, Brush } from "./base_brush.js";
 import { CuboidShape } from "../shapes/cuboid.js";
 import { Mask } from "@modules/mask.js";
-import { smooth } from "../commands/region/smooth_func.js";
+import { smooth } from "../commands/region/heightmap_func.js";
 import { Selection } from "@modules/selection.js";
 
 /**

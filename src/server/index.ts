@@ -1,5 +1,6 @@
 import { Player, world } from "@minecraft/server";
 import { print, printerr } from "./util.js";
+import isWhitelistEnabled from "whitelist.js";
 
 // Check if configuration is properly loaded
 if (!config.commandPrefix) {
@@ -28,9 +29,7 @@ Server.on("ready", (ev) => {
 
 Server.on("playerLoaded", (ev) => {
     contentLog.debug(`player ${ev.player.name} loaded.`);
-    if (ready) {
-        makeBuilder(ev.player);
-    }
+    if (ready) makeBuilder(ev.player);
 });
 
 Server.on("playerLeave", (ev) => {
@@ -46,7 +45,7 @@ Server.on("tick", () => {
             if (PlayerUtil.isHotbarStashed(player)) {
                 PlayerUtil.restoreHotbar(player);
             }
-            if (!makeBuilder(player)) {
+            if (makeBuilder(player)) {
                 // Attempt to make them a builder.
                 print("worldedit.permission.granted", player);
                 continue;
@@ -81,10 +80,9 @@ function makeBuilder(player: Player) {
         getSession(player);
         activeBuilders.push(player);
         contentLog.log(`${player.name} has been given worldedit permissions.`);
-        return false;
+        return true;
     }
-
-    return true;
+    return false;
 }
 
 function removeBuilder(player: string) {
@@ -105,10 +103,9 @@ function removeBuilder(player: string) {
 }
 
 function hasWorldEdit(player: Player) {
+    if (!isWhitelistEnabled()) return true;
     for (const tag of player.getTags()) {
-        if (tag.startsWith("worldedit")) {
-            return true;
-        }
+        if (tag.startsWith("worldedit")) return true;
     }
     return false;
 }

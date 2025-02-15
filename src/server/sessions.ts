@@ -1,14 +1,15 @@
-import { Player } from "@minecraft/server";
-import { Server, Vector, setTickTimeout, contentLog, Database } from "@notbeer-api";
+import { Player, system, Vector3 } from "@minecraft/server";
+import { Server, Vector, setTickTimeout, contentLog, Databases } from "@notbeer-api";
 import { Tools } from "./tools/tool_manager.js";
 import { History } from "@modules/history.js";
 import { Mask } from "@modules/mask.js";
 import { Pattern } from "@modules/pattern.js";
 import { PlayerUtil } from "@modules/player_util.js";
-import { RegionBuffer } from "@modules/region_buffer.js";
+import { RegionBuffer, RegionSaveOptions } from "@modules/region_buffer.js";
 import { Selection, selectMode } from "@modules/selection.js";
 import { ConfigContext } from "./ui/types.js";
 import config from "config.js";
+import { Database } from "library/@types/classes/databaseBuilder.js";
 
 const playerSessions: Map<string, PlayerSession> = new Map();
 const pendingDeletion: Map<string, [number, PlayerSession]> = new Map();
@@ -20,9 +21,9 @@ Server.on("playerChangeDimension", (ev) => {
 interface regionTransform {
     originalLoc?: Vector;
     originalDim?: string;
-    relative: Vector;
+    offset: Vector;
     rotation: Vector;
-    flip: Vector;
+    scale: Vector;
 }
 
 interface superPickaxe {
@@ -34,6 +35,24 @@ interface superPickaxe {
 interface gradients {
     [id: string]: { dither: number; patterns: Pattern[] };
 }
+
+Databases.addParser((key, value, databaseName) => {
+    if (databaseName === "gradients" && value && typeof value === "object" && value.patterns) {
+        try {
+            value.patterns = (<string[]>value.patterns).map((v) => new Pattern(v));
+            return value;
+        } catch {
+            contentLog.error(`Failed to load gradient ${key}`);
+        }
+    } else {
+        return value;
+    }
+});
+
+system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
+    if (id !== "wedit:reset_gradients_database" || !sourceEntity) return;
+    Databases.delete("gradients", sourceEntity);
+});
 
 /**
  * Represents a WorldEdit user's current session with the addon.
@@ -87,9 +106,9 @@ export class PlayerSession {
      * The transformation properties currently on the clipboard
      */
     public clipboardTransform: regionTransform = {
-        relative: Vector.ZERO,
+        offset: Vector.ZERO,
         rotation: Vector.ZERO,
-        flip: Vector.ONE,
+        scale: Vector.ONE,
     };
 
     public superPickaxe: superPickaxe = {
@@ -107,7 +126,7 @@ export class PlayerSession {
     private gradients: Database<gradients>;
     private placementMode: "player" | "selection" = "player";
 
-    private _drawOutlines: boolean;
+    private _drawOutlines: boolean | "local";
 
     constructor(player: Player) {
         this.player = player;
@@ -115,10 +134,7 @@ export class PlayerSession {
         this.history = new History(this);
         this.selection = new Selection(player);
         this.drawOutlines = config.drawOutlines;
-        this.gradients = new Database<gradients>("gradients", player, (k, v) => {
-            if (k === "patterns") return (<string[]>v).map((v) => new Pattern(v));
-            return v;
-        });
+        this.gradients = Databases.load<gradients>("gradients", player);
 
         if (!this.getTools().length) {
             this.bindTool("selection_wand", config.wandItem);
@@ -135,7 +151,7 @@ export class PlayerSession {
         }
     }
 
-    public set drawOutlines(val: boolean) {
+    public set drawOutlines(val: boolean | "local") {
         this._drawOutlines = val;
         this.selection.visible = val;
     }
@@ -184,7 +200,7 @@ export class PlayerSession {
         } else {
             const point = this.selection.points[0];
             if (!point) throw "";
-            return point;
+            return point.clone();
         }
     }
 
@@ -268,39 +284,42 @@ export class PlayerSession {
         // this.settingsHotbar = new SettingsHotbar(this);
     }
 
-    public createRegion(isAccurate: boolean) {
-        const buffer = new RegionBuffer(isAccurate && !config.performanceMode && !this.performanceMode);
-        this.regions.set(buffer.id, buffer);
-        return buffer;
+    public *createRegion(start: Vector3, end: Vector3, options: RegionSaveOptions = {}) {
+        const buffer = yield* RegionBuffer.createFromWorld(start, end, this.player.dimension, {
+            ...options,
+            recordBlocksWithData: (options.recordBlocksWithData ?? true) && !config.performanceMode && !this.performanceMode,
+        });
+        if (buffer) {
+            this.regions.set(buffer.id, buffer);
+            return buffer;
+        }
     }
 
     public deleteRegion(buffer: RegionBuffer) {
-        buffer.deref();
-        this.regions.delete(buffer.id);
+        buffer?.deref();
+        this.regions.delete(buffer?.id);
     }
 
     public createGradient(id: string, dither: number, patterns: Pattern[]) {
-        this.gradients.set(id, { dither, patterns });
+        this.gradients.data[id] = { dither, patterns };
         this.gradients.save();
     }
 
     public getGradient(id: string) {
-        return this.gradients.get(id);
+        return this.gradients.data[id];
     }
 
     public getGradientNames() {
-        return this.gradients.keys() as string[];
+        return Object.keys(this.gradients.data);
     }
 
     public deleteGradient(id: string) {
-        this.gradients.delete(id);
+        delete this.gradients.data[id];
         this.gradients.save();
     }
 
     delete() {
-        for (const region of this.regions.values()) {
-            region.deref();
-        }
+        for (const region of this.regions.values()) region.deref();
         this.regions.clear();
         this.history.delete();
         this.history = null;

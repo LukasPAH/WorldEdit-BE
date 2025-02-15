@@ -1,5 +1,5 @@
 import { Jobs } from "@modules/jobs.js";
-import { RawText, regionBounds, sleep, Vector } from "@notbeer-api";
+import { RawText, regionBounds, Vector } from "@notbeer-api";
 import { BlockPermutation } from "@minecraft/server";
 import { registerCommand } from "../register_commands.js";
 import { fluidLookPositions, lavaMatch } from "./drain.js";
@@ -30,17 +30,14 @@ registerCommand(registerInformation, function* (session, builder, args) {
         }
     }
 
-    if (!fixlavaStart) {
-        throw "commands.wedit:fixlava.noLava";
-    }
+    if (!fixlavaStart) throw "commands.wedit:fixlava.noLava";
 
     const blocks = yield* Jobs.run(session, 1, function* () {
         yield Jobs.nextStep("Calculating and Fixing lava...");
-        // Stop filling at unloaded chunks
-        const blocks = yield* floodFill(fixlavaStart, args.get("radius"), (ctx, dir) => {
-            const block = dimension.getBlock(ctx.worldPos.offset(dir.x, dir.y, dir.z));
-            if (!block?.typeId.match(lavaMatch)) return false;
-            return true;
+        yield Jobs.setProgress(-1);
+
+        const blocks = yield* floodFill(fixlavaStart, args.get("radius"), (ctx) => {
+            return !!ctx.nextBlock.typeId.match(lavaMatch);
         });
 
         if (!blocks.length) return blocks;
@@ -50,15 +47,13 @@ registerCommand(registerInformation, function* (session, builder, args) {
         const record = history.record();
         const lava = BlockPermutation.resolve("minecraft:lava");
         try {
-            yield history.addUndoStructure(record, min, max, blocks);
+            yield* history.addUndoStructure(record, min, max, blocks);
             let i = 0;
             for (const loc of blocks) {
-                let block = dimension.getBlock(loc);
-                while (!(block || (block = Jobs.loadBlock(loc)))) yield sleep(1);
-                block.setPermutation(lava);
+                dimension.getBlock(loc) ?? (yield* Jobs.loadBlock(loc)).setPermutation(lava);
                 yield Jobs.setProgress(i++ / blocks.length);
             }
-            yield history.addRedoStructure(record, min, max, blocks);
+            yield* history.addRedoStructure(record, min, max, blocks);
             history.commit(record);
         } catch (err) {
             history.cancel(record);
